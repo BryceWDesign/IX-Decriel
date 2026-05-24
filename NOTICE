@@ -1,0 +1,15 @@
+IX-Decriel
+Copyright 2026 Bryce Lovell
+
+Decriel is a security-first programming language originated and created by
+Bryce Lovell.
+
+IX-Decriel is the official public research repository for Decriel.
+
+The IX prefix identifies this repository as part of the IX research ecosystem.
+It does not change the language name. The language name is Decriel.
+
+Decriel stands for Declarative Effects and Capabilities for Runtime Integrity,
+Evidence, and Least-Authority.
+
+This project is licensed under the Apache License, Version 2.0.
