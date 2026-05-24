@@ -1,3 +1,5 @@
+//! Regression tests for checked Decriel syntax fixtures.
+
 use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
@@ -33,7 +35,6 @@ fn minimal_fixture_parses_as_empty_module() -> Result<(), Box<dyn Error>> {
 
     if let Some(module) = result.module() {
         assert_eq!(module.name().name(), "minimal");
-        assert_eq!(module.len(), 0);
         assert!(module.is_empty());
     }
 
