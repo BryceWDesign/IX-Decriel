@@ -286,7 +286,7 @@ impl Parser {
         match token.kind() {
             TokenKind::Identifier(name) => {
                 self.advance();
-                Some(Identifier::new(name.clone(), token.span()))
+                Some(Identifier::new(name.to_owned(), token.span()))
             }
             _ => {
                 self.report_token(&token, message);
@@ -341,9 +341,7 @@ impl Parser {
 #[cfg(test)]
 mod tests {
     use super::parse;
-    use crate::ast::{
-        CapabilityAction, Declaration, EffectAction, PolicyAction,
-    };
+    use crate::ast::{CapabilityAction, Declaration, EffectAction, PolicyAction};
     use crate::source::SourceDocument;
 
     #[test]
@@ -383,43 +381,40 @@ mod tests {
         assert!(module.is_some());
 
         if let Some(module) = module {
+            let declarations = module.declarations();
+
             assert_eq!(module.name().name(), "secure_service");
             assert_eq!(module.len(), 4);
+            assert_eq!(declarations[0].kind_name(), "capability");
+            assert_eq!(declarations[1].kind_name(), "effect");
+            assert_eq!(declarations[2].kind_name(), "policy");
+            assert_eq!(declarations[3].kind_name(), "function");
 
-            assert_eq!(module.declarations()[0].kind_name(), "capability");
-            assert_eq!(module.declarations()[1].kind_name(), "effect");
-            assert_eq!(module.declarations()[2].kind_name(), "policy");
-            assert_eq!(module.declarations()[3].kind_name(), "function");
-
-            match &module.declarations()[0] {
-                Declaration::Capability { action, target, .. } => {
-                    assert_eq!(*action, CapabilityAction::Network);
-                    assert_eq!(target.name(), "outbound_api");
-                }
-                _ => unreachable!("first declaration should be capability"),
+            if let Declaration::Capability { action, target, .. } = &declarations[0] {
+                assert_eq!(*action, CapabilityAction::Network);
+                assert_eq!(target.name(), "outbound_api");
+            } else {
+                assert_eq!(declarations[0].kind_name(), "capability");
             }
 
-            match &module.declarations()[1] {
-                Declaration::Effect { action, target, .. } => {
-                    assert_eq!(*action, EffectAction::Trace);
-                    assert_eq!(target.name(), "audit_event");
-                }
-                _ => unreachable!("second declaration should be effect"),
+            if let Declaration::Effect { action, target, .. } = &declarations[1] {
+                assert_eq!(*action, EffectAction::Trace);
+                assert_eq!(target.name(), "audit_event");
+            } else {
+                assert_eq!(declarations[1].kind_name(), "effect");
             }
 
-            match &module.declarations()[2] {
-                Declaration::Policy { action, target, .. } => {
-                    assert_eq!(*action, PolicyAction::Deny);
-                    assert_eq!(target.name(), "shell_access");
-                }
-                _ => unreachable!("third declaration should be policy"),
+            if let Declaration::Policy { action, target, .. } = &declarations[2] {
+                assert_eq!(*action, PolicyAction::Deny);
+                assert_eq!(target.name(), "shell_access");
+            } else {
+                assert_eq!(declarations[2].kind_name(), "policy");
             }
 
-            match &module.declarations()[3] {
-                Declaration::Function { name, .. } => {
-                    assert_eq!(name.name(), "review_gate");
-                }
-                _ => unreachable!("fourth declaration should be function"),
+            if let Declaration::Function { name, .. } = &declarations[3] {
+                assert_eq!(name.name(), "review_gate");
+            } else {
+                assert_eq!(declarations[3].kind_name(), "function");
             }
         }
     }
@@ -484,7 +479,10 @@ mod tests {
 
     #[test]
     fn parser_rejects_invalid_capability_action() {
-        let document = SourceDocument::new("invalid_capability.dcr", "module main { capability trace audit; }");
+        let document = SourceDocument::new(
+            "invalid_capability.dcr",
+            "module main { capability trace audit; }",
+        );
 
         let result = parse(&document);
         let diagnostics = result.diagnostics().diagnostics();
@@ -496,6 +494,17 @@ mod tests {
             diagnostics[0].message(),
             "expected capability action: read, write, network, execute, or secret"
         );
+    }
+
+    #[test]
+    fn parser_renders_syntax_diagnostics() {
+        let document = SourceDocument::new("render_error.dcr", "module {}");
+
+        let result = parse(&document);
+        let rendered = result.diagnostics().render();
+
+        assert!(result.has_errors());
+        assert!(rendered.contains("error: expected module name after 'module'"));
     }
 
     #[test]
