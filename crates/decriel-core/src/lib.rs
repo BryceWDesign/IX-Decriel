@@ -12,6 +12,7 @@ pub mod token;
 
 pub use ast::{
     CapabilityAction, Declaration, DecrielModule, EffectAction, Identifier, PolicyAction,
+    render_module_ast,
 };
 pub use lexer::{LexResult, lex};
 pub use parser::{ParseResult, parse};
