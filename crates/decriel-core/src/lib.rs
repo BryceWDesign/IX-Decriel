@@ -4,9 +4,13 @@
 //! shared by the command-line interface, diagnostics layer, parser, checker, and
 //! later runtime components.
 
+pub mod lexer;
 pub mod source;
+pub mod token;
 
+pub use lexer::{LexResult, lex};
 pub use source::SourceDocument;
+pub use token::{Keyword, Symbol, Token, TokenKind};
 
 /// Public name of the language.
 pub const LANGUAGE_NAME: &str = "Decriel";
