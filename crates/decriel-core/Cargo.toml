@@ -1,0 +1,12 @@
+[package]
+name = "decriel-core"
+version = "0.1.0"
+description = "Core language identity and shared compiler-domain types for Decriel."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true
