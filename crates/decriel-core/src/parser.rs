@@ -1,12 +1,16 @@
 //! Parser foundation for Decriel source text.
 //!
 //! This parser turns tokenized Decriel source into an AST. At this stage it
-//! accepts a module shell and rejects malformed source with structured
-//! diagnostics. Declaration parsing is added by later Wave 1 commits.
+//! accepts module shells and declaration shells. Later waves attach capability
+//! semantics, effect tracking, policy validation, runtime enforcement, evidence,
+//! secret tracking, supply-chain security, cryptographic APIs, privacy profiles,
+//! proof obligations, and backend lowering.
 
 use decriel_diagnostics::{Diagnostic, DiagnosticReport, DiagnosticSeverity, SourceSpan};
 
-use crate::ast::{DecrielModule, Identifier};
+use crate::ast::{
+    CapabilityAction, Declaration, DecrielModule, EffectAction, Identifier, PolicyAction,
+};
 use crate::lexer::lex;
 use crate::source::SourceDocument;
 use crate::token::{Keyword, Symbol, Token, TokenKind};
@@ -99,17 +103,151 @@ impl Parser {
         let module_name = self.consume_identifier("expected module name after 'module'")?;
         self.consume_symbol(Symbol::LeftBrace, "expected '{' after module name")?;
 
-        if !self.check_symbol(Symbol::RightBrace) {
-            self.report_current("expected '}' to close module body");
-            return None;
+        let mut declarations = Vec::new();
+
+        while !self.check_symbol(Symbol::RightBrace) && !self.current().is_end_of_file() {
+            declarations.push(self.parse_declaration()?);
         }
 
-        let close_token = self.consume_symbol(Symbol::RightBrace, "expected '}' to close module body")?;
+        let close_token =
+            self.consume_symbol(Symbol::RightBrace, "expected '}' to close module body")?;
         self.consume_end_of_file()?;
 
         let span = SourceSpan::new(module_token.span().start, close_token.span().end);
 
-        Some(DecrielModule::new(module_name, Vec::new(), span))
+        Some(DecrielModule::new(module_name, declarations, span))
+    }
+
+    fn parse_declaration(&mut self) -> Option<Declaration> {
+        match self.current().kind() {
+            TokenKind::Keyword(Keyword::Capability) => self.parse_capability_declaration(),
+            TokenKind::Keyword(Keyword::Effect) => self.parse_effect_declaration(),
+            TokenKind::Keyword(Keyword::Policy) => self.parse_policy_declaration(),
+            TokenKind::Keyword(Keyword::Fn) => self.parse_function_declaration(),
+            _ => {
+                self.report_current(
+                    "expected declaration: capability, effect, policy, or function shell",
+                );
+                None
+            }
+        }
+    }
+
+    fn parse_capability_declaration(&mut self) -> Option<Declaration> {
+        let start = self.consume_keyword(Keyword::Capability, "expected 'capability'")?;
+        let action = self.consume_capability_action()?;
+        let target = self.consume_identifier("expected capability target")?;
+        let semicolon =
+            self.consume_symbol(Symbol::Semicolon, "expected ';' after capability declaration")?;
+        let span = SourceSpan::new(start.span().start, semicolon.span().end);
+
+        Some(Declaration::Capability {
+            action,
+            target,
+            span,
+        })
+    }
+
+    fn parse_effect_declaration(&mut self) -> Option<Declaration> {
+        let start = self.consume_keyword(Keyword::Effect, "expected 'effect'")?;
+        let action = self.consume_effect_action()?;
+        let target = self.consume_identifier("expected effect target")?;
+        let semicolon =
+            self.consume_symbol(Symbol::Semicolon, "expected ';' after effect declaration")?;
+        let span = SourceSpan::new(start.span().start, semicolon.span().end);
+
+        Some(Declaration::Effect {
+            action,
+            target,
+            span,
+        })
+    }
+
+    fn parse_policy_declaration(&mut self) -> Option<Declaration> {
+        let start = self.consume_keyword(Keyword::Policy, "expected 'policy'")?;
+        let action = self.consume_policy_action()?;
+        let target = self.consume_identifier("expected policy target")?;
+        let semicolon =
+            self.consume_symbol(Symbol::Semicolon, "expected ';' after policy declaration")?;
+        let span = SourceSpan::new(start.span().start, semicolon.span().end);
+
+        Some(Declaration::Policy {
+            action,
+            target,
+            span,
+        })
+    }
+
+    fn parse_function_declaration(&mut self) -> Option<Declaration> {
+        let start = self.consume_keyword(Keyword::Fn, "expected 'fn'")?;
+        let name = self.consume_identifier("expected function name after 'fn'")?;
+        let semicolon =
+            self.consume_symbol(Symbol::Semicolon, "expected ';' after function declaration")?;
+        let span = SourceSpan::new(start.span().start, semicolon.span().end);
+
+        Some(Declaration::Function { name, span })
+    }
+
+    fn consume_capability_action(&mut self) -> Option<CapabilityAction> {
+        let token = self.current().clone();
+        let action = match token.kind() {
+            TokenKind::Keyword(Keyword::Read) => CapabilityAction::Read,
+            TokenKind::Keyword(Keyword::Write) => CapabilityAction::Write,
+            TokenKind::Keyword(Keyword::Network) => CapabilityAction::Network,
+            TokenKind::Keyword(Keyword::Execute) => CapabilityAction::Execute,
+            TokenKind::Keyword(Keyword::Secret) => CapabilityAction::Secret,
+            _ => {
+                self.report_token(
+                    &token,
+                    "expected capability action: read, write, network, execute, or secret",
+                );
+                return None;
+            }
+        };
+
+        self.advance();
+        Some(action)
+    }
+
+    fn consume_effect_action(&mut self) -> Option<EffectAction> {
+        let token = self.current().clone();
+        let action = match token.kind() {
+            TokenKind::Keyword(Keyword::Read) => EffectAction::Read,
+            TokenKind::Keyword(Keyword::Write) => EffectAction::Write,
+            TokenKind::Keyword(Keyword::Network) => EffectAction::Network,
+            TokenKind::Keyword(Keyword::Trace) => EffectAction::Trace,
+            TokenKind::Keyword(Keyword::Evidence) => EffectAction::Evidence,
+            _ => {
+                self.report_token(
+                    &token,
+                    "expected effect action: read, write, network, trace, or evidence",
+                );
+                return None;
+            }
+        };
+
+        self.advance();
+        Some(action)
+    }
+
+    fn consume_policy_action(&mut self) -> Option<PolicyAction> {
+        let token = self.current().clone();
+        let action = match token.kind() {
+            TokenKind::Keyword(Keyword::Allow) => PolicyAction::Allow,
+            TokenKind::Keyword(Keyword::Deny) => PolicyAction::Deny,
+            TokenKind::Keyword(Keyword::Requires) => PolicyAction::Requires,
+            TokenKind::Keyword(Keyword::Ensures) => PolicyAction::Ensures,
+            _ => {
+                self.report_token(
+                    &token,
+                    "expected policy action: allow, deny, requires, or ensures",
+                );
+                return None;
+            }
+        };
+
+        self.advance();
+        Some(action)
     }
 
     fn consume_keyword(&mut self, expected: Keyword, message: &str) -> Option<Token> {
@@ -203,6 +341,9 @@ impl Parser {
 #[cfg(test)]
 mod tests {
     use super::parse;
+    use crate::ast::{
+        CapabilityAction, Declaration, EffectAction, PolicyAction,
+    };
     use crate::source::SourceDocument;
 
     #[test]
@@ -219,6 +360,67 @@ mod tests {
         if let Some(module) = module {
             assert_eq!(module.name().name(), "secure_service");
             assert!(module.is_empty());
+        }
+    }
+
+    #[test]
+    fn parser_accepts_declaration_shells() {
+        let document = SourceDocument::new(
+            "declarations.dcr",
+            "module secure_service {
+                capability network outbound_api;
+                effect trace audit_event;
+                policy deny shell_access;
+                fn review_gate;
+            }",
+        );
+
+        let result = parse(&document);
+
+        assert!(!result.has_errors());
+
+        let module = result.module();
+        assert!(module.is_some());
+
+        if let Some(module) = module {
+            assert_eq!(module.name().name(), "secure_service");
+            assert_eq!(module.len(), 4);
+
+            assert_eq!(module.declarations()[0].kind_name(), "capability");
+            assert_eq!(module.declarations()[1].kind_name(), "effect");
+            assert_eq!(module.declarations()[2].kind_name(), "policy");
+            assert_eq!(module.declarations()[3].kind_name(), "function");
+
+            match &module.declarations()[0] {
+                Declaration::Capability { action, target, .. } => {
+                    assert_eq!(*action, CapabilityAction::Network);
+                    assert_eq!(target.name(), "outbound_api");
+                }
+                _ => unreachable!("first declaration should be capability"),
+            }
+
+            match &module.declarations()[1] {
+                Declaration::Effect { action, target, .. } => {
+                    assert_eq!(*action, EffectAction::Trace);
+                    assert_eq!(target.name(), "audit_event");
+                }
+                _ => unreachable!("second declaration should be effect"),
+            }
+
+            match &module.declarations()[2] {
+                Declaration::Policy { action, target, .. } => {
+                    assert_eq!(*action, PolicyAction::Deny);
+                    assert_eq!(target.name(), "shell_access");
+                }
+                _ => unreachable!("third declaration should be policy"),
+            }
+
+            match &module.declarations()[3] {
+                Declaration::Function { name, .. } => {
+                    assert_eq!(name.name(), "review_gate");
+                }
+                _ => unreachable!("fourth declaration should be function"),
+            }
         }
     }
 
@@ -262,6 +464,38 @@ mod tests {
         assert!(result.module().is_none());
         assert_eq!(diagnostics.len(), 1);
         assert_eq!(diagnostics[0].message(), "expected '}' to close module body");
+    }
+
+    #[test]
+    fn parser_rejects_invalid_declaration_shell() {
+        let document = SourceDocument::new("invalid_declaration.dcr", "module main { let bad; }");
+
+        let result = parse(&document);
+        let diagnostics = result.diagnostics().diagnostics();
+
+        assert!(result.has_errors());
+        assert!(result.module().is_none());
+        assert_eq!(diagnostics.len(), 1);
+        assert_eq!(
+            diagnostics[0].message(),
+            "expected declaration: capability, effect, policy, or function shell"
+        );
+    }
+
+    #[test]
+    fn parser_rejects_invalid_capability_action() {
+        let document = SourceDocument::new("invalid_capability.dcr", "module main { capability trace audit; }");
+
+        let result = parse(&document);
+        let diagnostics = result.diagnostics().diagnostics();
+
+        assert!(result.has_errors());
+        assert!(result.module().is_none());
+        assert_eq!(diagnostics.len(), 1);
+        assert_eq!(
+            diagnostics[0].message(),
+            "expected capability action: read, write, network, execute, or secret"
+        );
     }
 
     #[test]
