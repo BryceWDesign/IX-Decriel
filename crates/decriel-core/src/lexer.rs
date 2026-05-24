@@ -88,8 +88,7 @@ impl<'source> Lexer<'source> {
         }
 
         let end_span = self.span_for(self.position, self.position);
-        self.tokens
-            .push(Token::new(TokenKind::EndOfFile, end_span));
+        self.tokens.push(Token::new(TokenKind::EndOfFile, end_span));
 
         LexResult::new(self.tokens, self.diagnostics)
     }
@@ -174,7 +173,7 @@ impl<'source> Lexer<'source> {
                 return;
             }
 
-            if character == '\\n' || character == '\\r' {
+            if character == '\n' || character == '\r' {
                 let span = self.span_for(start, self.position);
                 self.diagnostics.push(Diagnostic::with_span(
                     DiagnosticSeverity::Error,
@@ -392,10 +391,7 @@ mod tests {
 
         assert!(!result.has_errors());
         assert_eq!(tokens[0].kind(), &TokenKind::Keyword(Keyword::Module));
-        assert_eq!(
-            tokens[1].kind(),
-            &TokenKind::Identifier("main".to_owned())
-        );
+        assert_eq!(tokens[1].kind(), &TokenKind::Identifier("main".to_owned()));
         assert_eq!(tokens[2].kind(), &TokenKind::Keyword(Keyword::Policy));
         assert_eq!(tokens[3].kind(), &TokenKind::Keyword(Keyword::Allow));
         assert!(tokens[4].is_end_of_file());
