@@ -1,0 +1,30 @@
+[workspace]
+members = [
+    "crates/decriel-cli",
+    "crates/decriel-core",
+    "crates/decriel-diagnostics",
+]
+resolver = "2"
+
+[workspace.package]
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/BryceWDesign/IX-Decriel"
+authors = ["Bryce Lovell"]
+rust-version = "1.74"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+
+[workspace.lints.clippy]
+all = "warn"
+pedantic = "warn"
+unwrap_used = "warn"
+expect_used = "warn"
+panic = "warn"
+todo = "warn"
+unimplemented = "warn"
+dbg_macro = "warn"
+print_stdout = "warn"
+print_stderr = "warn"
