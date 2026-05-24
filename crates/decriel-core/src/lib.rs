@@ -4,6 +4,10 @@
 //! shared by the command-line interface, diagnostics layer, parser, checker, and
 //! later runtime components.
 
+pub mod source;
+
+pub use source::SourceDocument;
+
 /// Public name of the language.
 pub const LANGUAGE_NAME: &str = "Decriel";
 
