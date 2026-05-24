@@ -52,6 +52,18 @@ pub enum DiagnosticSeverity {
     Error,
 }
 
+impl DiagnosticSeverity {
+    /// Returns the stable lowercase text label for this severity.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Note => "note",
+            Self::Warning => "warning",
+            Self::Error => "error",
+        }
+    }
+}
+
 /// Structured diagnostic message.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Diagnostic {
@@ -108,6 +120,22 @@ impl Diagnostic {
     pub const fn is_error(&self) -> bool {
         matches!(self.severity, DiagnosticSeverity::Error)
     }
+
+    /// Renders the diagnostic as a stable one-line report.
+    #[must_use]
+    pub fn render_line(&self) -> String {
+        match self.span {
+            Some(span) => format!(
+                "{}:{}:{}: {}: {}",
+                span.start.line,
+                span.start.column,
+                span.end.column,
+                self.severity.as_str(),
+                self.message
+            ),
+            None => format!("{}: {}", self.severity.as_str(), self.message),
+        }
+    }
 }
 
 /// Collection of diagnostics emitted while checking a Decriel file.
@@ -153,13 +181,28 @@ impl DiagnosticReport {
     pub fn is_empty(&self) -> bool {
         self.diagnostics.is_empty()
     }
+
+    /// Renders all diagnostics as stable newline-separated report lines.
+    #[must_use]
+    pub fn render(&self) -> String {
+        self.diagnostics
+            .iter()
+            .map(Diagnostic::render_line)
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        Diagnostic, DiagnosticReport, DiagnosticSeverity, SourceLocation, SourceSpan,
-    };
+    use super::{Diagnostic, DiagnosticReport, DiagnosticSeverity, SourceLocation, SourceSpan};
+
+    #[test]
+    fn severity_labels_are_stable() {
+        assert_eq!(DiagnosticSeverity::Note.as_str(), "note");
+        assert_eq!(DiagnosticSeverity::Warning.as_str(), "warning");
+        assert_eq!(DiagnosticSeverity::Error.as_str(), "error");
+    }
 
     #[test]
     fn report_tracks_error_presence() {
@@ -195,5 +238,33 @@ mod tests {
         assert_eq!(diagnostic.message(), "expected declaration");
         assert_eq!(diagnostic.span(), Some(span));
         assert!(diagnostic.is_error());
+    }
+
+    #[test]
+    fn diagnostic_without_span_renders_stable_line() {
+        let diagnostic = Diagnostic::new(DiagnosticSeverity::Warning, "review capability scope");
+
+        assert_eq!(diagnostic.render_line(), "warning: review capability scope");
+    }
+
+    #[test]
+    fn diagnostic_with_span_renders_stable_line() {
+        let span = SourceSpan::new(SourceLocation::new(3, 5), SourceLocation::new(3, 16));
+        let diagnostic =
+            Diagnostic::with_span(DiagnosticSeverity::Error, "expected module name", span);
+
+        assert_eq!(diagnostic.render_line(), "3:5:16: error: expected module name");
+    }
+
+    #[test]
+    fn report_renders_diagnostics_in_insertion_order() {
+        let first = Diagnostic::new(DiagnosticSeverity::Error, "first");
+        let second = Diagnostic::new(DiagnosticSeverity::Warning, "second");
+        let mut report = DiagnosticReport::new();
+
+        report.push(first);
+        report.push(second);
+
+        assert_eq!(report.render(), "error: first\nwarning: second");
     }
 }
