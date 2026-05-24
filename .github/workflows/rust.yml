@@ -34,6 +34,9 @@ jobs:
           rustc --version
           cargo --version
 
+      - name: Check workspace
+        run: cargo check --workspace --all-targets
+
       - name: Check formatting
         run: cargo fmt --all -- --check
 
