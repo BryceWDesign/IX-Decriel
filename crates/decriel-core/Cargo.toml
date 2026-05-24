@@ -8,5 +8,8 @@ repository.workspace = true
 authors.workspace = true
 rust-version.workspace = true
 
+[dependencies]
+decriel-diagnostics = { path = "../decriel-diagnostics" }
+
 [lints]
 workspace = true
