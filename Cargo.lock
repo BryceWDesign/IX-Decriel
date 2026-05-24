@@ -12,6 +12,9 @@ dependencies = [
 [[package]]
 name = "decriel-core"
 version = "0.1.0"
+dependencies = [
+ "decriel-diagnostics",
+]
 
 [[package]]
 name = "decriel-diagnostics"
