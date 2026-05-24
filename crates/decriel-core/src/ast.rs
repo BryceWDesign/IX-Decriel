@@ -235,12 +235,56 @@ impl PolicyAction {
     }
 }
 
+/// Renders a parsed Decriel module as stable, line-oriented AST text.
+#[must_use]
+pub fn render_module_ast(module: &DecrielModule) -> String {
+    let module_name = module.name().name();
+    let declaration_count = module.len();
+    let mut output = format!("module {module_name}\ndeclarations {declaration_count}\n");
+
+    for declaration in module.declarations() {
+        output.push_str(&render_declaration_ast(declaration));
+        output.push('\n');
+    }
+
+    output
+}
+
+fn render_declaration_ast(declaration: &Declaration) -> String {
+    match declaration {
+        Declaration::Capability { action, target, .. } => {
+            let action = action.as_str();
+            let target = target.name();
+
+            format!("declaration capability action={action} target={target}")
+        }
+        Declaration::Effect { action, target, .. } => {
+            let action = action.as_str();
+            let target = target.name();
+
+            format!("declaration effect action={action} target={target}")
+        }
+        Declaration::Policy { action, target, .. } => {
+            let action = action.as_str();
+            let target = target.name();
+
+            format!("declaration policy action={action} target={target}")
+        }
+        Declaration::Function { name, .. } => {
+            let name = name.name();
+
+            format!("declaration function name={name}")
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use decriel_diagnostics::{SourceLocation, SourceSpan};
 
     use super::{
         CapabilityAction, Declaration, DecrielModule, EffectAction, Identifier, PolicyAction,
+        render_module_ast,
     };
 
     fn span() -> SourceSpan {
@@ -301,5 +345,43 @@ mod tests {
         assert_eq!(CapabilityAction::Network.as_str(), "network");
         assert_eq!(EffectAction::Evidence.as_str(), "evidence");
         assert_eq!(PolicyAction::Requires.as_str(), "requires");
+    }
+
+    #[test]
+    fn module_ast_renders_stable_lines() {
+        let module = DecrielModule::new(
+            Identifier::new("secure_service", span()),
+            vec![
+                Declaration::Capability {
+                    action: CapabilityAction::Network,
+                    target: Identifier::new("outbound_api", span()),
+                    span: span(),
+                },
+                Declaration::Effect {
+                    action: EffectAction::Trace,
+                    target: Identifier::new("audit_event", span()),
+                    span: span(),
+                },
+                Declaration::Policy {
+                    action: PolicyAction::Deny,
+                    target: Identifier::new("shell_access", span()),
+                    span: span(),
+                },
+                Declaration::Function {
+                    name: Identifier::new("review_gate", span()),
+                    span: span(),
+                },
+            ],
+            span(),
+        );
+
+        let rendered = render_module_ast(&module);
+
+        assert!(rendered.contains("module secure_service"));
+        assert!(rendered.contains("declarations 4"));
+        assert!(rendered.contains("declaration capability action=network target=outbound_api"));
+        assert!(rendered.contains("declaration effect action=trace target=audit_event"));
+        assert!(rendered.contains("declaration policy action=deny target=shell_access"));
+        assert!(rendered.contains("declaration function name=review_gate"));
     }
 }
