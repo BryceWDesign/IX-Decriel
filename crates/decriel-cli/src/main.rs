@@ -179,7 +179,8 @@ fn ast_loaded_source(document: &SourceDocument) -> Result<String, String> {
 }
 
 fn read_source_file(path: &Path) -> Result<String, String> {
-    fs::read_to_string(path).map_err(|error| format!("failed to read '{}': {error}", path.display()))
+    fs::read_to_string(path)
+        .map_err(|error| format!("failed to read '{}': {error}", path.display()))
 }
 
 fn help_text() -> String {
