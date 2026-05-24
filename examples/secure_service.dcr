@@ -1,0 +1,18 @@
+module secure_service {
+    capability read customer_documents;
+    capability write verification_result;
+    capability network approved_vendor_api;
+    capability secret access_token;
+
+    effect read customer_documents;
+    effect write verification_result;
+    effect network approved_vendor_api;
+    effect trace audit_event;
+    effect evidence review_bundle;
+
+    policy deny shell_access;
+    policy requires human_review;
+    policy ensures evidence_trace;
+
+    fn review_gate;
+}
