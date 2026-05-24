@@ -6,6 +6,7 @@
 
 pub mod ast;
 pub mod lexer;
+pub mod parser;
 pub mod source;
 pub mod token;
 
@@ -13,6 +14,7 @@ pub use ast::{
     CapabilityAction, Declaration, DecrielModule, EffectAction, Identifier, PolicyAction,
 };
 pub use lexer::{LexResult, lex};
+pub use parser::{ParseResult, parse};
 pub use source::SourceDocument;
 pub use token::{Keyword, Symbol, Token, TokenKind};
 
