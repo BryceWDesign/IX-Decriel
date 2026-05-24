@@ -212,87 +212,83 @@ mod tests {
 
     use super::{ast_loaded_source, check_loaded_source, run};
 
-    #[test]
-    fn version_command_reports_decriel_identity() {
-        let result = run(["version".to_owned()]);
+    fn require_success(result: Result<String, String>) -> String {
+        match result {
+            Ok(output) => output,
+            Err(error) => {
+                assert!(error.is_empty(), "expected success, got error: {error}");
+                String::new()
+            }
+        }
+    }
 
-        assert!(result.as_ref().is_ok());
-
-        if let Ok(output) = result {
-            assert!(output.contains("Decriel"));
-            assert!(output.contains("IX-Decriel"));
+    fn require_failure(result: Result<String, String>) -> String {
+        match result {
+            Ok(output) => {
+                assert!(output.is_empty(), "expected failure, got output: {output}");
+                String::new()
+            }
+            Err(error) => error,
         }
     }
 
     #[test]
+    fn version_command_reports_decriel_identity() {
+        let output = require_success(run(["version".to_owned()]));
+
+        assert!(output.contains("Decriel"));
+        assert!(output.contains("IX-Decriel"));
+    }
+
+    #[test]
     fn help_command_reports_usage() {
-        let result = run(["help".to_owned()]);
+        let output = require_success(run(["help".to_owned()]));
 
-        assert!(result.as_ref().is_ok());
-
-        if let Ok(output) = result {
-            assert!(output.contains("Usage:"));
-            assert!(output.contains("decriel --version"));
-            assert!(output.contains("decriel inspect <file>"));
-            assert!(output.contains("decriel check <file>"));
-            assert!(output.contains("decriel ast <file>"));
-        }
+        assert!(output.contains("Usage:"));
+        assert!(output.contains("decriel --version"));
+        assert!(output.contains("decriel inspect <file>"));
+        assert!(output.contains("decriel check <file>"));
+        assert!(output.contains("decriel ast <file>"));
     }
 
     #[test]
     fn inspect_command_reports_source_metrics_for_existing_file() {
         let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         let source_path = manifest_dir.join("src/main.rs");
-        let result = run([
+        let output = require_success(run([
             "inspect".to_owned(),
             source_path.to_string_lossy().into_owned(),
-        ]);
+        ]));
 
-        assert!(result.as_ref().is_ok());
-
-        if let Ok(output) = result {
-            assert!(output.contains("status: source-loaded"));
-            assert!(output.contains("source_path:"));
-            assert!(output.contains("byte_length:"));
-            assert!(output.contains("line_count:"));
-            assert!(output.contains("trailing_newline:"));
-        }
+        assert!(output.contains("status: source-loaded"));
+        assert!(output.contains("source_path:"));
+        assert!(output.contains("byte_length:"));
+        assert!(output.contains("line_count:"));
+        assert!(output.contains("trailing_newline:"));
     }
 
     #[test]
     fn inspect_command_requires_file_path() {
-        let result = run(["inspect".to_owned()]);
+        let error = require_failure(run(["inspect".to_owned()]));
 
-        assert!(result.as_ref().is_err());
-
-        if let Err(error) = result {
-            assert!(error.contains("missing file path"));
-            assert!(error.contains("decriel inspect <file>"));
-        }
+        assert!(error.contains("missing file path"));
+        assert!(error.contains("decriel inspect <file>"));
     }
 
     #[test]
     fn check_command_requires_file_path() {
-        let result = run(["check".to_owned()]);
+        let error = require_failure(run(["check".to_owned()]));
 
-        assert!(result.as_ref().is_err());
-
-        if let Err(error) = result {
-            assert!(error.contains("missing file path"));
-            assert!(error.contains("decriel check <file>"));
-        }
+        assert!(error.contains("missing file path"));
+        assert!(error.contains("decriel check <file>"));
     }
 
     #[test]
     fn ast_command_requires_file_path() {
-        let result = run(["ast".to_owned()]);
+        let error = require_failure(run(["ast".to_owned()]));
 
-        assert!(result.as_ref().is_err());
-
-        if let Err(error) = result {
-            assert!(error.contains("missing file path"));
-            assert!(error.contains("decriel ast <file>"));
-        }
+        assert!(error.contains("missing file path"));
+        assert!(error.contains("decriel ast <file>"));
     }
 
     #[test]
@@ -307,31 +303,22 @@ mod tests {
             }",
         );
 
-        let result = check_loaded_source(&document);
+        let output = require_success(check_loaded_source(&document));
 
-        assert!(result.as_ref().is_ok());
-
-        if let Ok(output) = result {
-            assert!(output.contains("status: syntax-ok"));
-            assert!(output.contains("source_path: valid.dcr"));
-            assert!(output.contains("module: secure_service"));
-            assert!(output.contains("declarations: 4"));
-        }
+        assert!(output.contains("status: syntax-ok"));
+        assert!(output.contains("source_path: valid.dcr"));
+        assert!(output.contains("module: secure_service"));
+        assert!(output.contains("declarations: 4"));
     }
 
     #[test]
     fn check_loaded_source_reports_invalid_decriel_syntax() {
         let document = SourceDocument::new(Path::new("invalid.dcr"), "module {}");
+        let error = require_failure(check_loaded_source(&document));
 
-        let result = check_loaded_source(&document);
-
-        assert!(result.as_ref().is_err());
-
-        if let Err(error) = result {
-            assert!(error.contains("status: syntax-error"));
-            assert!(error.contains("source_path: invalid.dcr"));
-            assert!(error.contains("expected module name after 'module'"));
-        }
+        assert!(error.contains("status: syntax-error"));
+        assert!(error.contains("source_path: invalid.dcr"));
+        assert!(error.contains("expected module name after 'module'"));
     }
 
     #[test]
@@ -346,31 +333,23 @@ mod tests {
             }",
         );
 
-        let result = ast_loaded_source(&document);
+        let output = require_success(ast_loaded_source(&document));
 
-        assert!(result.as_ref().is_ok());
-
-        if let Ok(output) = result {
-            assert!(output.contains("status: ast-ok"));
-            assert!(output.contains("source_path: valid_ast.dcr"));
-            assert!(output.contains("module secure_service"));
-            assert!(output.contains("declarations 4"));
-            assert!(output.contains("declaration capability action=network target=outbound_api"));
-            assert!(output.contains("declaration effect action=trace target=audit_event"));
-            assert!(output.contains("declaration policy action=deny target=shell_access"));
-            assert!(output.contains("declaration function name=review_gate"));
-        }
+        assert!(output.contains("status: ast-ok"));
+        assert!(output.contains("source_path: valid_ast.dcr"));
+        assert!(output.contains("module secure_service"));
+        assert!(output.contains("declarations 4"));
+        assert!(output.contains("declaration capability action=network target=outbound_api"));
+        assert!(output.contains("declaration effect action=trace target=audit_event"));
+        assert!(output.contains("declaration policy action=deny target=shell_access"));
+        assert!(output.contains("declaration function name=review_gate"));
     }
 
     #[test]
     fn unknown_command_fails() {
-        let result = run(["execute".to_owned()]);
+        let error = require_failure(run(["execute".to_owned()]));
 
-        assert!(result.as_ref().is_err());
-
-        if let Err(error) = result {
-            assert!(error.contains("unknown command"));
-            assert!(error.contains("decriel --help"));
-        }
+        assert!(error.contains("unknown command"));
+        assert!(error.contains("decriel --help"));
     }
 }
