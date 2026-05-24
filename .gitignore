@@ -1,0 +1,33 @@
+# Rust build output
+/target/
+
+# Cargo local publishing artifacts
+*.crate
+
+# Generated profiling and coverage files
+*.profraw
+*.profdata
+coverage/
+tarpaulin-report.html
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Editor and IDE state
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Operating system files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local logs and temporary files
+*.log
+tmp/
+temp/
