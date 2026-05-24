@@ -224,7 +224,8 @@ mod tests {
     #[test]
     fn keyword_source_spelling_is_stable() {
         assert_eq!(Keyword::Module.as_str(), "module");
-        assert_eq!(Keyword::LeastAuthorityCandidate.as_str(), "least-authority");
+        assert_eq!(Keyword::Capability.as_str(), "capability");
+        assert_eq!(Keyword::Ensures.as_str(), "ensures");
     }
 
     #[test]
