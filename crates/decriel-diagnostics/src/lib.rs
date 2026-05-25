@@ -124,16 +124,18 @@ impl Diagnostic {
     /// Renders the diagnostic as a stable one-line report.
     #[must_use]
     pub fn render_line(&self) -> String {
+        let severity = self.severity.as_str();
+        let message = self.message();
+
         match self.span {
-            Some(span) => format!(
-                "{}:{}:{}: {}: {}",
-                span.start.line,
-                span.start.column,
-                span.end.column,
-                self.severity.as_str(),
-                self.message
-            ),
-            None => format!("{}: {}", self.severity.as_str(), self.message),
+            Some(span) => {
+                let line = span.start.line;
+                let start_column = span.start.column;
+                let end_column = span.end.column;
+
+                format!("{line}:{start_column}:{end_column}: {severity}: {message}")
+            }
+            None => format!("{severity}: {message}"),
         }
     }
 }
@@ -185,11 +187,17 @@ impl DiagnosticReport {
     /// Renders all diagnostics as stable newline-separated report lines.
     #[must_use]
     pub fn render(&self) -> String {
-        self.diagnostics
-            .iter()
-            .map(Diagnostic::render_line)
-            .collect::<Vec<_>>()
-            .join("\n")
+        let mut output = String::new();
+
+        for (index, diagnostic) in self.diagnostics.iter().enumerate() {
+            if index > 0 {
+                output.push('\n');
+            }
+
+            output.push_str(&diagnostic.render_line());
+        }
+
+        output
     }
 }
 
