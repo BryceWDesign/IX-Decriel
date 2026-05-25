@@ -55,10 +55,18 @@ fn secure_service_fixture_parses_declaration_surface() -> Result<(), Box<dyn Err
 
         assert_eq!(module.name().name(), "secure_service");
         assert_eq!(module.len(), 13);
-        assert!(rendered.contains("declaration capability action=read target=customer_documents"));
-        assert!(rendered.contains("declaration capability action=write target=verification_result"));
-        assert!(rendered.contains("declaration capability action=network target=approved_vendor_api"));
-        assert!(rendered.contains("declaration capability action=secret target=access_token"));
+        assert!(rendered.contains(
+            "declaration capability action=read target=customer_documents"
+        ));
+        assert!(rendered.contains(
+            "declaration capability action=write target=verification_result"
+        ));
+        assert!(rendered.contains(
+            "declaration capability action=network target=approved_vendor_api"
+        ));
+        assert!(rendered.contains(
+            "declaration capability action=secret target=access_token"
+        ));
         assert!(rendered.contains("declaration effect action=trace target=audit_event"));
         assert!(rendered.contains("declaration effect action=evidence target=review_bundle"));
         assert!(rendered.contains("declaration policy action=deny target=shell_access"));
