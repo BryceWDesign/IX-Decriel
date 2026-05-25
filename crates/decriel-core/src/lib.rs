@@ -11,11 +11,11 @@ pub mod source;
 pub mod token;
 
 pub use ast::{
-    CapabilityAction, Declaration, DecrielModule, EffectAction, Identifier, PolicyAction,
-    render_module_ast,
+    render_module_ast, CapabilityAction, Declaration, DecrielModule, EffectAction, Identifier,
+    PolicyAction,
 };
-pub use lexer::{LexResult, lex};
-pub use parser::{ParseResult, parse};
+pub use lexer::{lex, LexResult};
+pub use parser::{parse, ParseResult};
 pub use source::SourceDocument;
 pub use token::{Keyword, Symbol, Token, TokenKind};
 
@@ -73,7 +73,7 @@ impl LanguageIdentity {
 
 #[cfg(test)]
 mod tests {
-    use super::{ACRONYM_EXPANSION, LANGUAGE_NAME, LanguageIdentity, REPOSITORY_NAME};
+    use super::{LanguageIdentity, ACRONYM_EXPANSION, LANGUAGE_NAME, REPOSITORY_NAME};
 
     #[test]
     fn identity_uses_locked_language_and_repository_names() {
