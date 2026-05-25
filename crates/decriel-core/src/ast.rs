@@ -283,8 +283,8 @@ mod tests {
     use decriel_diagnostics::{SourceLocation, SourceSpan};
 
     use super::{
-        CapabilityAction, Declaration, DecrielModule, EffectAction, Identifier, PolicyAction,
-        render_module_ast,
+        render_module_ast, CapabilityAction, Declaration, DecrielModule, EffectAction, Identifier,
+        PolicyAction,
     };
 
     fn span() -> SourceSpan {
