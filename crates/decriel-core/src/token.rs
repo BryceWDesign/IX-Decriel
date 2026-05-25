@@ -201,8 +201,8 @@ impl Token {
 
     /// Returns true when this token is the end-of-file marker.
     #[must_use]
-    pub const fn is_end_of_file(&self) -> bool {
-        matches!(self.kind, TokenKind::EndOfFile)
+    pub fn is_end_of_file(&self) -> bool {
+        matches!(self.kind(), TokenKind::EndOfFile)
     }
 }
 
