@@ -82,17 +82,11 @@ fn inspect_source(path: &Path) -> Result<String, String> {
     let trailing_newline = document.has_trailing_newline();
 
     Ok(format!(
-        concat!(
-            "status: source-loaded\n",
-            "source_path: {}\n",
-            "byte_length: {}\n",
-            "line_count: {}\n",
-            "trailing_newline: {}"
-        ),
-        source_path,
-        byte_len,
-        line_count,
-        trailing_newline
+        "status: source-loaded\n\
+         source_path: {source_path}\n\
+         byte_length: {byte_len}\n\
+         line_count: {line_count}\n\
+         trailing_newline: {trailing_newline}"
     ))
 }
 
@@ -139,15 +133,10 @@ fn check_loaded_source(document: &SourceDocument) -> Result<String, String> {
     let declaration_count = module.len();
 
     Ok(format!(
-        concat!(
-            "status: syntax-ok\n",
-            "source_path: {}\n",
-            "module: {}\n",
-            "declarations: {}"
-        ),
-        source_path,
-        module_name,
-        declaration_count
+        "status: syntax-ok\n\
+         source_path: {source_path}\n\
+         module: {module_name}\n\
+         declarations: {declaration_count}"
     ))
 }
 
