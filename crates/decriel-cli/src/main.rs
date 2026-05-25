@@ -43,7 +43,9 @@ fn run(args: impl IntoIterator<Item = String>) -> Result<String, String> {
     let mut args = args.into_iter();
 
     match args.next().as_deref() {
-        None | Some("--version") | Some("version") => Ok(LanguageIdentity::current().display_line()),
+        None | Some("--version") | Some("version") => {
+            Ok(LanguageIdentity::current().display_line())
+        }
         Some("--help") | Some("help") => Ok(help_text()),
         Some("inspect") => inspect_command(&mut args),
         Some("check") => check_command(&mut args),
@@ -73,7 +75,13 @@ fn inspect_source(path: &Path) -> Result<String, String> {
     let document = SourceDocument::new(path, source);
 
     Ok(format!(
-        "status: source-loaded\nsource_path: {}\nbyte_length: {}\nline_count: {}\ntrailing_newline: {}",
+        concat!(
+            "status: source-loaded\n",
+            "source_path: {}\n",
+            "byte_length: {}\n",
+            "line_count: {}\n",
+            "trailing_newline: {}"
+        ),
         document.path().display(),
         document.byte_len(),
         document.line_count(),
@@ -184,8 +192,10 @@ fn read_source_file(path: &Path) -> Result<String, String> {
 }
 
 fn help_text() -> String {
+    let identity = LanguageIdentity::current().display_line();
+
     [
-        LanguageIdentity::current().display_line(),
+        identity.as_str(),
         "",
         "Usage:",
         "  decriel --version",
