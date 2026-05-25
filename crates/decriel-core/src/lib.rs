@@ -63,10 +63,11 @@ impl LanguageIdentity {
     /// Returns a compact single-line identity string suitable for CLI output.
     #[must_use]
     pub fn display_line(self) -> String {
-        format!(
-            "{} {} ({})",
-            self.language_name, self.toolchain_version, self.repository_name
-        )
+        let language_name = self.language_name;
+        let toolchain_version = self.toolchain_version;
+        let repository_name = self.repository_name;
+
+        format!("{language_name} {toolchain_version} ({repository_name})")
     }
 }
 
