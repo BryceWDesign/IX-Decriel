@@ -6,10 +6,7 @@ use std::io::{self, Write};
 use std::path::Path;
 use std::process::ExitCode;
 
-use decriel_core::LanguageIdentity;
-use decriel_core::SourceDocument;
-use decriel_core::parse;
-use decriel_core::render_module_ast;
+use decriel_core::{parse, render_module_ast, LanguageIdentity, SourceDocument};
 
 fn main() -> ExitCode {
     match run(env::args().skip(1)) {
