@@ -6,7 +6,10 @@ use std::io::{self, Write};
 use std::path::Path;
 use std::process::ExitCode;
 
-use decriel_core::{LanguageIdentity, SourceDocument, parse, render_module_ast};
+use decriel_core::LanguageIdentity;
+use decriel_core::SourceDocument;
+use decriel_core::parse;
+use decriel_core::render_module_ast;
 
 fn main() -> ExitCode {
     match run(env::args().skip(1)) {
@@ -73,19 +76,19 @@ fn inspect_command(args: &mut impl Iterator<Item = String>) -> Result<String, St
 fn inspect_source(path: &Path) -> Result<String, String> {
     let source = read_source_file(path)?;
     let document = SourceDocument::new(path, source);
+    let source_path = document.path().display();
+    let byte_len = document.byte_len();
+    let line_count = document.line_count();
+    let trailing_newline = document.has_trailing_newline();
 
     Ok(format!(
         concat!(
             "status: source-loaded\n",
-            "source_path: {}\n",
-            "byte_length: {}\n",
-            "line_count: {}\n",
-            "trailing_newline: {}"
-        ),
-        document.path().display(),
-        document.byte_len(),
-        document.line_count(),
-        document.has_trailing_newline()
+            "source_path: {source_path}\n",
+            "byte_length: {byte_len}\n",
+            "line_count: {line_count}\n",
+            "trailing_newline: {trailing_newline}"
+        )
     ))
 }
 
@@ -112,29 +115,32 @@ fn check_source(path: &Path) -> Result<String, String> {
 
 fn check_loaded_source(document: &SourceDocument) -> Result<String, String> {
     let result = parse(document);
+    let source_path = document.path().display();
 
     if result.has_errors() {
         let diagnostics = result.diagnostics().render();
 
         return Err(format!(
-            "status: syntax-error\nsource_path: {}\n{}",
-            document.path().display(),
-            diagnostics
+            "status: syntax-error\nsource_path: {source_path}\n{diagnostics}"
         ));
     }
 
     let Some(module) = result.module() else {
         return Err(format!(
-            "status: syntax-error\nsource_path: {}\nerror: parser produced no module",
-            document.path().display()
+            "status: syntax-error\nsource_path: {source_path}\nerror: parser produced no module"
         ));
     };
 
+    let module_name = module.name().name();
+    let declaration_count = module.len();
+
     Ok(format!(
-        "status: syntax-ok\nsource_path: {}\nmodule: {}\ndeclarations: {}",
-        document.path().display(),
-        module.name().name(),
-        module.len()
+        concat!(
+            "status: syntax-ok\n",
+            "source_path: {source_path}\n",
+            "module: {module_name}\n",
+            "declarations: {declaration_count}"
+        )
     ))
 }
 
@@ -161,34 +167,35 @@ fn ast_source(path: &Path) -> Result<String, String> {
 
 fn ast_loaded_source(document: &SourceDocument) -> Result<String, String> {
     let result = parse(document);
+    let source_path = document.path().display();
 
     if result.has_errors() {
         let diagnostics = result.diagnostics().render();
 
         return Err(format!(
-            "status: syntax-error\nsource_path: {}\n{}",
-            document.path().display(),
-            diagnostics
+            "status: syntax-error\nsource_path: {source_path}\n{diagnostics}"
         ));
     }
 
     let Some(module) = result.module() else {
         return Err(format!(
-            "status: syntax-error\nsource_path: {}\nerror: parser produced no module",
-            document.path().display()
+            "status: syntax-error\nsource_path: {source_path}\nerror: parser produced no module"
         ));
     };
 
+    let rendered_ast = render_module_ast(module);
+
     Ok(format!(
-        "status: ast-ok\nsource_path: {}\n{}",
-        document.path().display(),
-        render_module_ast(module)
+        "status: ast-ok\nsource_path: {source_path}\n{rendered_ast}"
     ))
 }
 
 fn read_source_file(path: &Path) -> Result<String, String> {
-    fs::read_to_string(path)
-        .map_err(|error| format!("failed to read '{}': {error}", path.display()))
+    fs::read_to_string(path).map_err(|error| {
+        let source_path = path.display();
+
+        format!("failed to read '{source_path}': {error}")
+    })
 }
 
 fn help_text() -> String {
