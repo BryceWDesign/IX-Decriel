@@ -1,10 +1,10 @@
 //! Regression tests for checked Decriel syntax fixtures.
 
-use std::error::Error;
 use std::fs;
+use std::io;
 use std::path::PathBuf;
 
-use decriel_core::{SourceDocument, parse, render_module_ast};
+use decriel_core::{parse, render_module_ast, SourceDocument};
 
 fn fixture_path(parts: &[&str]) -> PathBuf {
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -20,12 +20,12 @@ fn fixture_path(parts: &[&str]) -> PathBuf {
     path
 }
 
-fn read_fixture(parts: &[&str]) -> Result<String, Box<dyn Error>> {
-    Ok(fs::read_to_string(fixture_path(parts))?)
+fn read_fixture(parts: &[&str]) -> io::Result<String> {
+    fs::read_to_string(fixture_path(parts))
 }
 
 #[test]
-fn minimal_fixture_parses_as_empty_module() -> Result<(), Box<dyn Error>> {
+fn minimal_fixture_parses_as_empty_module() -> io::Result<()> {
     let source = read_fixture(&["minimal.dcr"])?;
     let document = SourceDocument::new("examples/minimal.dcr", source);
     let result = parse(&document);
@@ -42,7 +42,7 @@ fn minimal_fixture_parses_as_empty_module() -> Result<(), Box<dyn Error>> {
 }
 
 #[test]
-fn secure_service_fixture_parses_declaration_surface() -> Result<(), Box<dyn Error>> {
+fn secure_service_fixture_parses_declaration_surface() -> io::Result<()> {
     let source = read_fixture(&["secure_service.dcr"])?;
     let document = SourceDocument::new("examples/secure_service.dcr", source);
     let result = parse(&document);
@@ -79,7 +79,7 @@ fn secure_service_fixture_parses_declaration_surface() -> Result<(), Box<dyn Err
 }
 
 #[test]
-fn invalid_missing_module_name_fixture_reports_syntax_error() -> Result<(), Box<dyn Error>> {
+fn invalid_missing_module_name_fixture_reports_syntax_error() -> io::Result<()> {
     let source = read_fixture(&["invalid", "missing_module_name.dcr"])?;
     let document = SourceDocument::new("examples/invalid/missing_module_name.dcr", source);
     let result = parse(&document);
