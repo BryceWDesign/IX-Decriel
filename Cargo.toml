@@ -15,7 +15,6 @@ rust-version = "1.74"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
-missing_docs = "warn"
 
 [workspace.lints.clippy]
 all = "warn"
