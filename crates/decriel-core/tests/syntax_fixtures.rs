@@ -4,7 +4,7 @@ use std::fs;
 use std::io;
 use std::path::PathBuf;
 
-use decriel_core::{parse, render_module_ast, SourceDocument};
+use decriel_core::{SourceDocument, parse, render_module_ast};
 
 fn fixture_path(parts: &[&str]) -> PathBuf {
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
