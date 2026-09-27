@@ -1,0 +1,9 @@
+module denied_shell {
+    capability execute shell_access;
+    effect execute shell_access;
+    policy deny shell_access;
+
+    fn unsafe_action {
+        execute shell_access;
+    }
+}

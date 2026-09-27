@@ -2,7 +2,7 @@
 //!
 //! The source document layer gives the toolchain a shared, tested way to hold
 //! source text, count lines, and translate byte offsets into human-readable
-//! locations before the parser arrives in Wave 1.
+//! locations for diagnostics throughout the parser and semantic checker.
 
 use std::path::{Path, PathBuf};
 

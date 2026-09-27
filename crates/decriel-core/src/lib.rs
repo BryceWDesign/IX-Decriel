@@ -5,6 +5,7 @@
 //! later runtime components.
 
 pub mod ast;
+pub mod authority;
 pub mod lexer;
 pub mod parser;
 pub mod source;
@@ -12,7 +13,11 @@ pub mod token;
 
 pub use ast::{
     render_module_ast, CapabilityAction, Declaration, DecrielModule, EffectAction, Identifier,
-    PolicyAction,
+    Operation, PolicyAction,
+};
+pub use authority::{
+    check, CheckedModule, Decision, GrantAuthority, HostError, NoGrant, NoReview, OperationHost,
+    Record, ReviewAuthority, RunReport,
 };
 pub use lexer::{lex, LexResult};
 pub use parser::{parse, ParseResult};
@@ -99,7 +104,7 @@ mod tests {
         let display = LanguageIdentity::current().display_line();
 
         assert!(display.contains("Decriel"));
-        assert!(display.contains("0.1.0"));
+        assert!(display.contains("0.2.0"));
         assert!(display.contains("IX-Decriel"));
     }
 }

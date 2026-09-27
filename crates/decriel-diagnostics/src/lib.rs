@@ -261,7 +261,10 @@ mod tests {
         let diagnostic =
             Diagnostic::with_span(DiagnosticSeverity::Error, "expected module name", span);
 
-        assert_eq!(diagnostic.render_line(), "3:5:16: error: expected module name");
+        assert_eq!(
+            diagnostic.render_line(),
+            "3:5:16: error: expected module name"
+        );
     }
 
     #[test]

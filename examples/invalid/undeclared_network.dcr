@@ -1,0 +1,7 @@
+module undeclared_network {
+    effect network vendor;
+
+    fn request {
+        network vendor;
+    }
+}

@@ -1,15 +1,11 @@
 //! Parser foundation for Decriel source text.
 //!
-//! This parser turns tokenized Decriel source into an AST. At this stage it
-//! accepts module shells and declaration shells. Later waves attach capability
-//! semantics, effect tracking, policy validation, runtime enforcement, evidence,
-//! secret tracking, supply-chain security, cryptographic APIs, privacy profiles,
-//! proof obligations, and backend lowering.
+//! This parser recognizes declaration shells and bounded executable functions.
 
 use decriel_diagnostics::{Diagnostic, DiagnosticReport, DiagnosticSeverity, SourceSpan};
 
 use crate::ast::{
-    CapabilityAction, Declaration, DecrielModule, EffectAction, Identifier, PolicyAction,
+    CapabilityAction, Declaration, DecrielModule, EffectAction, Identifier, Operation, PolicyAction,
 };
 use crate::lexer::lex;
 use crate::source::SourceDocument;
@@ -137,8 +133,10 @@ impl Parser {
         let start = self.consume_keyword(Keyword::Capability, "expected 'capability'")?;
         let action = self.consume_capability_action()?;
         let target = self.consume_identifier("expected capability target")?;
-        let semicolon =
-            self.consume_symbol(Symbol::Semicolon, "expected ';' after capability declaration")?;
+        let semicolon = self.consume_symbol(
+            Symbol::Semicolon,
+            "expected ';' after capability declaration",
+        )?;
         let span = SourceSpan::new(start.span().start, semicolon.span().end);
 
         Some(Declaration::Capability {
@@ -181,11 +179,47 @@ impl Parser {
     fn parse_function_declaration(&mut self) -> Option<Declaration> {
         let start = self.consume_keyword(Keyword::Fn, "expected 'fn'")?;
         let name = self.consume_identifier("expected function name after 'fn'")?;
-        let semicolon =
-            self.consume_symbol(Symbol::Semicolon, "expected ';' after function declaration")?;
-        let span = SourceSpan::new(start.span().start, semicolon.span().end);
+        if self.check_symbol(Symbol::LeftBrace) {
+            self.advance();
+            let mut steps = Vec::new();
+            while !self.check_symbol(Symbol::RightBrace) && !self.current().is_end_of_file() {
+                steps.push(self.parse_operation()?);
+            }
+            let close =
+                self.consume_symbol(Symbol::RightBrace, "expected '}' to close function")?;
+            let span = SourceSpan::new(start.span().start, close.span().end);
+            Some(Declaration::Executable { name, steps, span })
+        } else {
+            let semicolon =
+                self.consume_symbol(Symbol::Semicolon, "expected ';' after function declaration")?;
+            let span = SourceSpan::new(start.span().start, semicolon.span().end);
+            Some(Declaration::Function { name, span })
+        }
+    }
 
-        Some(Declaration::Function { name, span })
+    fn parse_operation(&mut self) -> Option<Operation> {
+        let start = self.current().clone();
+        let action = match start.kind() {
+            TokenKind::Keyword(Keyword::Read) => CapabilityAction::Read,
+            TokenKind::Keyword(Keyword::Write) => CapabilityAction::Write,
+            TokenKind::Keyword(Keyword::Network) => CapabilityAction::Network,
+            TokenKind::Keyword(Keyword::Execute) => CapabilityAction::Execute,
+            _ => {
+                self.report_token(
+                    &start,
+                    "expected operation: read, write, network, or execute",
+                );
+                return None;
+            }
+        };
+        self.advance();
+        let target = self.consume_identifier("expected operation target")?;
+        let end = self.consume_symbol(Symbol::Semicolon, "expected ';' after operation")?;
+        Some(Operation {
+            action,
+            target,
+            span: SourceSpan::new(start.span().start, end.span().end),
+        })
     }
 
     fn consume_capability_action(&mut self) -> Option<CapabilityAction> {
@@ -215,12 +249,13 @@ impl Parser {
             TokenKind::Keyword(Keyword::Read) => EffectAction::Read,
             TokenKind::Keyword(Keyword::Write) => EffectAction::Write,
             TokenKind::Keyword(Keyword::Network) => EffectAction::Network,
+            TokenKind::Keyword(Keyword::Execute) => EffectAction::Execute,
             TokenKind::Keyword(Keyword::Trace) => EffectAction::Trace,
             TokenKind::Keyword(Keyword::Evidence) => EffectAction::Evidence,
             _ => {
                 self.report_token(
                     &token,
-                    "expected effect action: read, write, network, trace, or evidence",
+                    "expected effect action: read, write, network, execute, trace, or evidence",
                 );
                 return None;
             }
@@ -445,7 +480,10 @@ mod tests {
         assert!(result.has_errors());
         assert!(result.module().is_none());
         assert_eq!(diagnostics.len(), 1);
-        assert_eq!(diagnostics[0].message(), "expected module name after 'module'");
+        assert_eq!(
+            diagnostics[0].message(),
+            "expected module name after 'module'"
+        );
     }
 
     #[test]
@@ -458,7 +496,10 @@ mod tests {
         assert!(result.has_errors());
         assert!(result.module().is_none());
         assert_eq!(diagnostics.len(), 1);
-        assert_eq!(diagnostics[0].message(), "expected '}' to close module body");
+        assert_eq!(
+            diagnostics[0].message(),
+            "expected '}' to close module body"
+        );
     }
 
     #[test]

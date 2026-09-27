@@ -6,7 +6,10 @@ use std::io::{self, Write};
 use std::path::Path;
 use std::process::ExitCode;
 
-use decriel_core::{parse, render_module_ast, LanguageIdentity, SourceDocument};
+use decriel_core::{
+    check, parse, render_module_ast, CapabilityAction, GrantAuthority, HostError, LanguageIdentity,
+    NoReview, Operation, OperationHost, Record, SourceDocument,
+};
 
 fn main() -> ExitCode {
     match run(env::args().skip(1)) {
@@ -49,6 +52,7 @@ fn run(args: impl IntoIterator<Item = String>) -> Result<String, String> {
         Some("--help") | Some("help") => Ok(help_text()),
         Some("inspect") => inspect_command(&mut args),
         Some("check") => check_command(&mut args),
+        Some("simulate") => simulate_command(&mut args),
         Some("ast") => ast_command(&mut args),
         Some(command) => Err(format!(
             "unknown command '{command}'. Run 'decriel --help' for available commands."
@@ -109,32 +113,78 @@ fn check_source(path: &Path) -> Result<String, String> {
 }
 
 fn check_loaded_source(document: &SourceDocument) -> Result<String, String> {
-    let result = parse(document);
     let source_path = document.path().display();
-
-    if result.has_errors() {
-        let diagnostics = result.diagnostics().render();
-
-        return Err(format!(
-            "status: syntax-error\nsource_path: {source_path}\n{diagnostics}"
-        ));
-    }
-
-    let Some(module) = result.module() else {
-        return Err(format!(
-            "status: syntax-error\nsource_path: {source_path}\nerror: parser produced no module"
-        ));
-    };
-
-    let module_name = module.name().name();
-    let declaration_count = module.len();
+    let checked = check(document).map_err(|report| {
+        format!(
+            "status: check-error\nsource_path: {source_path}\n{}",
+            report.render()
+        )
+    })?;
+    let module_name = checked.name();
 
     Ok(format!(
-        "status: syntax-ok\n\
+        "status: checked\n\
          source_path: {source_path}\n\
-         module: {module_name}\n\
-         declarations: {declaration_count}"
+         module: {module_name}"
     ))
+}
+
+// This adapter has no external effects. It is exclusively for CLI demonstrations.
+struct SimulationHost;
+
+// A simulated grant only: never an authenticated external grant.
+struct SimulationGrant;
+
+impl GrantAuthority for SimulationGrant {
+    fn granted(&self, _: &str, _: &str, _: &str, _: CapabilityAction, _: &str) -> bool {
+        true
+    }
+}
+
+impl OperationHost for SimulationHost {
+    fn record(&mut self, _: &str, _: &str, _: &str, _: &Record) -> Result<(), HostError> {
+        Ok(())
+    }
+
+    fn perform(&mut self, _: &str, _: &str, _: &str, _: &Operation) -> Result<(), HostError> {
+        Ok(())
+    }
+}
+
+fn simulate_command(args: &mut impl Iterator<Item = String>) -> Result<String, String> {
+    let Some(path_text) = args.next() else {
+        return Err("usage: decriel simulate <file> <function>".to_owned());
+    };
+    let Some(function) = args.next() else {
+        return Err("usage: decriel simulate <file> <function>".to_owned());
+    };
+    if args.next().is_some() {
+        return Err("usage: decriel simulate <file> <function>".to_owned());
+    }
+    let document = SourceDocument::new(&path_text, read_source_file(Path::new(&path_text))?);
+    let checked = check(&document).map_err(|report| report.render())?;
+    let result = checked.run(&function, &SimulationGrant, &NoReview, &mut SimulationHost);
+    let mut lines = vec![format!(
+        "mode: simulation-only\ngrant: simulated\nsource_sha256: {}\nstatus: {}",
+        result.source_sha256,
+        if result.complete {
+            "complete"
+        } else {
+            "denied-or-failed"
+        }
+    )];
+    for record in result.records {
+        lines.push(format!(
+            "step={} action={} target={} result={}",
+            record.step, record.action, record.target, record.reason
+        ));
+    }
+    let text = lines.join("\n");
+    if result.complete {
+        Ok(text)
+    } else {
+        Err(text)
+    }
 }
 
 fn ast_command(args: &mut impl Iterator<Item = String>) -> Result<String, String> {
@@ -202,13 +252,15 @@ fn help_text() -> String {
         "  decriel --help",
         "  decriel inspect <file>",
         "  decriel check <file>",
+        "  decriel simulate <file> <function>",
         "  decriel ast <file>",
         "",
         "Commands:",
         "  version          Print the Decriel toolchain version.",
         "  help             Print this help text.",
         "  inspect <file>   Load a source file and report foundational source metrics.",
-        "  check <file>     Parse a Decriel source file and report syntax status.",
+        "  check <file>     Parse and reject unsupported or unauthorized operations.",
+        "  simulate        Exercise mediated decisions without external effects or human approval.",
         "  ast <file>       Parse a Decriel source file and print stable AST text.",
     ]
     .join("\n")
@@ -301,23 +353,22 @@ mod tests {
     }
 
     #[test]
-    fn check_loaded_source_reports_valid_decriel_syntax() -> Result<(), String> {
+    fn check_loaded_source_reports_valid_decriel_semantics() -> Result<(), String> {
         let document = SourceDocument::new(
             Path::new("valid.dcr"),
             "module secure_service {
                 capability network outbound_api;
-                effect trace audit_event;
+                effect network outbound_api;
                 policy deny shell_access;
-                fn review_gate;
+                fn review_gate { network outbound_api; }
             }",
         );
 
         let output = check_loaded_source(&document)?;
 
-        assert!(output.contains("status: syntax-ok"));
+        assert!(output.contains("status: checked"));
         assert!(output.contains("source_path: valid.dcr"));
         assert!(output.contains("module: secure_service"));
-        assert!(output.contains("declarations: 4"));
 
         Ok(())
     }
@@ -327,7 +378,7 @@ mod tests {
         let document = SourceDocument::new(Path::new("invalid.dcr"), "module {}");
         let error = expect_failure(check_loaded_source(&document))?;
 
-        assert!(error.contains("status: syntax-error"));
+        assert!(error.contains("status: check-error"));
         assert!(error.contains("source_path: invalid.dcr"));
         assert!(error.contains("expected module name after 'module'"));
 
@@ -367,6 +418,28 @@ mod tests {
         assert!(error.contains("unknown command"));
         assert!(error.contains("decriel --help"));
 
+        Ok(())
+    }
+
+    #[test]
+    fn simulation_is_labeled_and_review_denial_is_nonzero() -> Result<(), String> {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../examples");
+        let approved = run([
+            "simulate".to_owned(),
+            root.join("simulated_network.dcr").display().to_string(),
+            "request".to_owned(),
+        ])?;
+        assert!(approved.contains("mode: simulation-only"));
+        assert!(approved.contains("grant: simulated"));
+        assert!(approved.contains("result=performed"));
+
+        let denied = expect_failure(run([
+            "simulate".to_owned(),
+            root.join("secure_service.dcr").display().to_string(),
+            "review_gate".to_owned(),
+        ]))?;
+        assert!(denied.contains("human_review_required"));
+        assert!(denied.contains("status: denied-or-failed"));
         Ok(())
     }
 }

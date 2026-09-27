@@ -1,0 +1,9 @@
+module simulated_network {
+    capability network vendor;
+    effect network vendor;
+    policy deny shell_access;
+
+    fn request {
+        network vendor;
+    }
+}

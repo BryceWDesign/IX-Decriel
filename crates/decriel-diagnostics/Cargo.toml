@@ -1,6 +1,6 @@
 [package]
 name = "decriel-diagnostics"
-version = "0.1.0"
+version = "0.2.0"
 description = "Diagnostic spans, severities, and reports for the Decriel toolchain."
 edition.workspace = true
 license.workspace = true

@@ -1,10 +1,7 @@
 //! Abstract syntax tree model for Decriel.
 //!
-//! The AST is the parsed structural form of Decriel source. Wave 1 uses this
-//! model for syntax recognition only; later waves will attach capability
-//! semantics, effect tracking, policy validation, runtime enforcement, evidence,
-//! secret tracking, supply-chain security, cryptographic APIs, privacy profiles,
-//! proof obligations, and backend lowering.
+//! The AST is the parsed structural form of Decriel source. The checker uses
+//! a deliberately small executable subset of this representation.
 
 use decriel_diagnostics::SourceSpan;
 
@@ -125,6 +122,26 @@ pub enum Declaration {
         /// Declaration source span.
         span: SourceSpan,
     },
+    /// Function with a mediated sequence of operations.
+    Executable {
+        /// Function name.
+        name: Identifier,
+        /// Operations in source order.
+        steps: Vec<Operation>,
+        /// Declaration source span.
+        span: SourceSpan,
+    },
+}
+
+/// An operation requested by a function. Targets are symbolic host bindings.
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct Operation {
+    /// Requested authority and observable effect.
+    pub action: CapabilityAction,
+    /// Exact symbolic target.
+    pub target: Identifier,
+    /// Operation source span.
+    pub span: SourceSpan,
 }
 
 impl Declaration {
@@ -135,7 +152,8 @@ impl Declaration {
             Self::Capability { span, .. }
             | Self::Effect { span, .. }
             | Self::Policy { span, .. }
-            | Self::Function { span, .. } => *span,
+            | Self::Function { span, .. }
+            | Self::Executable { span, .. } => *span,
         }
     }
 
@@ -146,7 +164,7 @@ impl Declaration {
             Self::Capability { .. } => "capability",
             Self::Effect { .. } => "effect",
             Self::Policy { .. } => "policy",
-            Self::Function { .. } => "function",
+            Self::Function { .. } | Self::Executable { .. } => "function",
         }
     }
 }
@@ -189,6 +207,8 @@ pub enum EffectAction {
     Write,
     /// Network effect.
     Network,
+    /// Mediated execution effect.
+    Execute,
     /// Trace output effect.
     Trace,
     /// Evidence output effect.
@@ -203,6 +223,7 @@ impl EffectAction {
             Self::Read => "read",
             Self::Write => "write",
             Self::Network => "network",
+            Self::Execute => "execute",
             Self::Trace => "trace",
             Self::Evidence => "evidence",
         }
@@ -274,6 +295,11 @@ fn render_declaration_ast(declaration: &Declaration) -> String {
             let name = name.name();
 
             format!("declaration function name={name}")
+        }
+        Declaration::Executable { name, steps, .. } => {
+            let name = name.name();
+            let count = steps.len();
+            format!("declaration function name={name} steps={count}")
         }
     }
 }

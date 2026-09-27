@@ -1,8 +1,8 @@
 //! Token model for Decriel source text.
 //!
 //! Tokens are the first structured representation of Decriel source. They keep
-//! syntax explicit before later waves add parsing, capability validation, effect
-//! tracking, and runtime enforcement.
+//! syntax explicit for parsing, capability validation, effect checks, and
+//! mediated execution.
 
 use decriel_diagnostics::SourceSpan;
 

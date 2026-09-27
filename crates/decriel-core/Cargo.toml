@@ -1,6 +1,6 @@
 [package]
 name = "decriel-core"
-version = "0.1.0"
+version = "0.2.0"
 description = "Core language identity and shared compiler-domain types for Decriel."
 edition.workspace = true
 license.workspace = true
@@ -10,6 +10,7 @@ rust-version.workspace = true
 
 [dependencies]
 decriel-diagnostics = { path = "../decriel-diagnostics" }
+sha2 = "0.10.9"
 
 [lints]
 workspace = true
